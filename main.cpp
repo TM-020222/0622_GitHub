@@ -4,6 +4,9 @@
 #include "keyboard.h"	//キーボードの処理
 #include "FPS.h"		//FPSの処理
 
+//マクロ定義
+#define TAMA_DIV_MAX 4	//弾の画像の最大数
+
 //動画の構造体
 struct MOVIE
 {
@@ -77,6 +80,12 @@ int fadeInCntInit = fadeTimeMax;	//初期値
 int fadeInCnt = fadeInCntInit;		//フェードインのカウンタ
 int fadeInCntMax = 0;				//フェードインのカウンタMAX 0?
 
+//弾の画像のハンドル
+int tama[TAMA_DIV_MAX];
+int tamaindex = 0;		//画像の添え字
+int TamaChangeCnt = 0;	//画像を変えるタイミング
+int TamaChangeCntMax = 4;	//画像を変えるタイミングMAX
+
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
 VOID TitleProc(VOID);	//タイトル画面(処理)
@@ -105,6 +114,9 @@ BOOL LoadAudio(AUDIO* audio, const char* path, int volume, int playtype);
 
 //画像のロード
 BOOL LoadImg(IMAGE* image, const char* path);
+
+//ゲームの画像の分割読み込み
+BOOL LoadImageDiv(int* handle, const char* path, int divX, int divY);
 
 VOID GameInit(VOID);	//ゲームの初期化
 VOID TitleInit(VOID);	//タイトルの初期化
@@ -240,6 +252,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	//終わるときの処理
 
+	//読み込んだ画像を開放
+	for (int i = 0; i < TAMA_DIV_MAX; i++) { DeleteGraph(tama[i]); }
+
 	DxLib_End();				// ＤＸライブラリ使用の終了処理
 
 	return 0;				// ソフトの終了 
@@ -251,6 +266,66 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 /// <returns>読み込めたらTRUE,読み込めなかったらFALSE</returns>
 BOOL GameLoad(VOID)
 {
+	if (LoadImageDiv(&tama[0],
+		".\\image\\160-40.png",
+		4, 1) == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
+/// <summary>
+/// 画像を分割してメモリに読み込み
+/// </summary>
+/// <param name="handle">ハンドル配列の先頭アドレス</param>
+/// <param name="path">画像のパス</param>
+/// <param name="divX">分割するときの横の数</param>
+/// <param name="divY">分割するときの縦の数</param>
+/// <returns></returns>
+BOOL LoadImageDiv(int *handle,const char *path,int divX,int divY)
+{
+	//弾の読み込み
+	int IsTamaLoad = -1;
+
+	//一時的に画像のハンドルを用意する
+	int tamahandle = LoadGraph(path);
+
+	if (tamahandle == -1)
+	{
+		MessageBox(
+			GetMainWindowHandle(),	//ウィンドウハンドル
+			path,				//本文
+			"画像読み込みエラー",	//タイトル
+			MB_OK);
+		return FALSE;
+	}
+
+	//画像の幅と高さを取得
+	int tamawidth = -1;
+	int tamaheight = -1;
+	GetGraphSize(tamahandle, &tamawidth, &tamaheight);
+
+	//分割して読み込み
+	IsTamaLoad = LoadDivGraph(
+		path,							//画像のパス
+		TAMA_DIV_MAX,						//分割総数
+		divX, divY,								//横の分割、縦の分割
+		tamawidth / 4, tamaheight / 1,		//幅、高さ
+		handle);							//連続で管理する配列の先頭アドレス
+
+	if (IsTamaLoad == -1)
+	{
+		MessageBox(
+			GetMainWindowHandle(),	//ウィンドウハンドル
+			path,				//本文
+			"画像分割エラー",	//タイトル
+			MB_OK);
+		return FALSE;
+	}
+
+	//一時的に読み込んだハンドルを開放
+	DeleteGraph(tamahandle);
+
 	return TRUE;
 }
 
@@ -367,6 +442,25 @@ VOID Title(VOID)
 /// </summary>
 VOID TitleProc(VOID)
 {
+	if (TamaChangeCnt < TamaChangeCntMax)
+	{
+		TamaChangeCnt++;
+	}
+	else
+	{
+		//弾の添え字が弾の分割数の最大よりも小さいとき
+		if (tamaindex < TAMA_DIV_MAX - 1)
+		{
+			tamaindex++;
+		}
+		else
+		{
+			tamaindex = 0;
+		}
+		TamaChangeCnt = 0;
+	}
+	
+
 	//プレイシーンへ切り替える
 	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
 	{
@@ -390,6 +484,9 @@ VOID TitleProc(VOID)
 /// </summary>
 VOID TitleDraw(VOID)
 {
+	//弾の描画
+	DrawGraph(0, 0, tama[tamaindex], TRUE);
+
 	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));
 	
 	return;
