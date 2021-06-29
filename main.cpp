@@ -84,7 +84,7 @@ int fadeInCntMax = 0;				//フェードインのカウンタMAX 0?
 int tama[TAMA_DIV_MAX];
 int tamaindex = 0;		//画像の添え字
 int TamaChangeCnt = 0;	//画像を変えるタイミング
-int TamaChangeCntMax = 4;	//画像を変えるタイミングMAX
+int TamaChangeCntMax = 3;	//画像を変えるタイミングMAX
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
