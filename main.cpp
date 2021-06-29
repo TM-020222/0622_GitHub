@@ -5,7 +5,8 @@
 #include "FPS.h"		//FPSの処理
 
 //マクロ定義
-#define TAMA_DIV_MAX 4	//弾の画像の最大数
+#define TAMA_MAX 10		//弾の総数
+
 
 //動画の構造体
 struct MOVIE
@@ -56,6 +57,32 @@ typedef struct CHARACTOR
 	RECT coll;				//当たり判定の領域(四角)
 }CHARA;
 
+struct TAMA
+{
+	int handle[255];	//画像のハンドル
+	char path[255];		//画像のパス
+
+	int divX;			//縦の分割数
+	int divY;			//横の分割数
+	int divMax;			//分割総数
+
+	int AnimationCnt = 0;		//アニメーションカウンタ
+	int AnimationCntMax = 0;	//アニメーションカウンタMAX
+
+	int NowIndex = 0;			//現在の画像の要素数
+
+	int x;						//X位置
+	int y;						//Y位置
+	int width;					//幅
+	int height;					//高さ
+
+	int speed;					//速度
+
+	RECT coll;					//当たり判定
+
+	BOOL IsDraw = FALSE;		//描画できるか
+};
+
 //グローバル変数
 //シーンを管理する変数
 GAME_SCENE GameScene;		//現在のゲームのシーン
@@ -65,6 +92,11 @@ GAME_SCENE NextGameScene;	// 次 のゲームのシーン
 //画面の切り替え
 BOOL IsFadeOut = FALSE;	//フェードアウト
 BOOL IsFadeIn  = FALSE;	//フェードイン
+
+//弾の構造体変数
+TAMA tama_moto;			//元
+TAMA tama[TAMA_MAX];	//実際に使う
+TAMA explosion;
 
 //シーン切り替え
 int fadeTimeMill = 2000;						//切り替えミリ秒
@@ -81,10 +113,7 @@ int fadeInCnt = fadeInCntInit;		//フェードインのカウンタ
 int fadeInCntMax = 0;				//フェードインのカウンタMAX 0?
 
 //弾の画像のハンドル
-int tama[TAMA_DIV_MAX];
-int tamaindex = 0;		//画像の添え字
-int TamaChangeCnt = 0;	//画像を変えるタイミング
-int TamaChangeCntMax = 3;	//画像を変えるタイミングMAX
+const int tamaDivMax = 4;
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
@@ -107,6 +136,8 @@ VOID Over(VOID);		//ゲームオーバー画面
 VOID OverProc(VOID);	//ゲームオーバー画面(処理)
 VOID OverDraw(VOID);	//ゲームオーバー画面(描画)
 
+VOID DrawTama(TAMA* tama);	//弾の描画
+
 BOOL GameLoad(VOID);	//ゲームデータのロード
 
 //音楽のロード
@@ -116,12 +147,13 @@ BOOL LoadAudio(AUDIO* audio, const char* path, int volume, int playtype);
 BOOL LoadImg(IMAGE* image, const char* path);
 
 //ゲームの画像の分割読み込み
-BOOL LoadImageDiv(int* handle, const char* path, int divX, int divY);
+BOOL LoadImageDiv(TAMA* handle, const char* path, int divX, int divY, int DivMax);
 
 VOID GameInit(VOID);	//ゲームの初期化
 VOID TitleInit(VOID);	//タイトルの初期化
 
 VOID CollUpdate(CHARA* chara);	//当たり判定の領域を更新
+VOID CollUpdateTama(TAMA* tama);	//当たり判定の領域を更新
 
 BOOL CubeCollision(RECT A, RECT B);		//矩形と矩形の当たり判定
 
@@ -253,7 +285,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	//終わるときの処理
 
 	//読み込んだ画像を開放
-	for (int i = 0; i < TAMA_DIV_MAX; i++) { DeleteGraph(tama[i]); }
+	for (int i = 0; i < tamaDivMax; i++) { DeleteGraph(tama_moto.handle[i]); }
 
 	DxLib_End();				// ＤＸライブラリ使用の終了処理
 
@@ -266,10 +298,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 /// <returns>読み込めたらTRUE,読み込めなかったらFALSE</returns>
 BOOL GameLoad(VOID)
 {
-	if (LoadImageDiv(&tama[0],
-		".\\image\\160-40.png",
-		4, 1) == FALSE)
+	//分割数を設定
+	tama_moto.x = 4;
+	tama_moto.y = 1;
+
+	//画像を分割して読み込み
+	if (LoadImageDiv(&tama_moto,
+		".\\image\\tama.png",
+		tama_moto.x, tama_moto.y , 4) == FALSE)
 		return FALSE;
+
+	//位置を設定
+	tama_moto.x = GAME_WIDTH / 2 - tama_moto.width / 2;		//中央
+	tama_moto.y = GAME_HEIGHT / 2 - tama_moto.height / 2;	//中央
+
+	//速度
+	tama_moto.speed = 1;
+
+	//アニメーションを変える速度
+	tama_moto.AnimationCntMax = 10;
+
+	//当たり判定の更新
+	CollUpdateTama(&tama_moto);
+
+	//画像を表示しない
+	tama_moto.IsDraw = FALSE;
+
+	//すべての弾に情報をコピー
+	for (int i = 0; i < TAMA_MAX; i++)
+	{
+		tama[i] = tama_moto;
+	}
 
 	return TRUE;
 }
@@ -282,15 +341,17 @@ BOOL GameLoad(VOID)
 /// <param name="divX">分割するときの横の数</param>
 /// <param name="divY">分割するときの縦の数</param>
 /// <returns></returns>
-BOOL LoadImageDiv(int *handle,const char *path,int divX,int divY)
+BOOL LoadImageDiv(TAMA *tama,const char *path,int divX,int divY,int divMax)
 {
+	//アドレスのコピー
+	strcpyDx(tama->path, path);
 	//弾の読み込み
 	int IsTamaLoad = -1;
 
 	//一時的に画像のハンドルを用意する
-	int tamahandle = LoadGraph(path);
+	tama->handle[0] = LoadGraph(path);
 
-	if (tamahandle == -1)
+	if (tama->handle[0] == -1)
 	{
 		MessageBox(
 			GetMainWindowHandle(),	//ウィンドウハンドル
@@ -303,15 +364,15 @@ BOOL LoadImageDiv(int *handle,const char *path,int divX,int divY)
 	//画像の幅と高さを取得
 	int tamawidth = -1;
 	int tamaheight = -1;
-	GetGraphSize(tamahandle, &tamawidth, &tamaheight);
+	GetGraphSize(tama->handle[0], &tamawidth, &tamaheight);
 
 	//分割して読み込み
 	IsTamaLoad = LoadDivGraph(
 		path,							//画像のパス
-		TAMA_DIV_MAX,						//分割総数
+		divMax,						//分割総数
 		divX, divY,								//横の分割、縦の分割
-		tamawidth / 4, tamaheight / 1,		//幅、高さ
-		handle);							//連続で管理する配列の先頭アドレス
+		tamawidth / divX, tamaheight / divY,		//幅、高さ
+		&tama->handle[0]);							//連続で管理する配列の先頭アドレス
 
 	if (IsTamaLoad == -1)
 	{
@@ -324,7 +385,7 @@ BOOL LoadImageDiv(int *handle,const char *path,int divX,int divY)
 	}
 
 	//一時的に読み込んだハンドルを開放
-	DeleteGraph(tamahandle);
+	//DeleteGraph(tamahandle);
 
 	return TRUE;
 }
@@ -442,25 +503,8 @@ VOID Title(VOID)
 /// </summary>
 VOID TitleProc(VOID)
 {
-	if (TamaChangeCnt < TamaChangeCntMax)
-	{
-		TamaChangeCnt++;
-	}
-	else
-	{
-		//弾の添え字が弾の分割数の最大よりも小さいとき
-		if (tamaindex < TAMA_DIV_MAX - 1)
-		{
-			tamaindex++;
-		}
-		else
-		{
-			tamaindex = 0;
-		}
-		TamaChangeCnt = 0;
-	}
 	
-
+	
 	//プレイシーンへ切り替える
 	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
 	{
@@ -484,12 +528,37 @@ VOID TitleProc(VOID)
 /// </summary>
 VOID TitleDraw(VOID)
 {
-	//弾の描画
-	DrawGraph(0, 0, tama[tamaindex], TRUE);
+	DrawTama(&tama[0]);
+
 
 	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));
 	
 	return;
+}
+
+///弾の描画
+VOID DrawTama(TAMA* tama)
+{
+	//弾の描画
+	DrawGraph(0, 0, tama->handle[tama->NowIndex], TRUE);
+
+	if (tama->AnimationCnt < tama->AnimationCntMax)
+	{
+		tama->AnimationCnt++;
+	}
+	else
+	{
+		//弾の添え字が弾の分割数の最大よりも小さいとき
+		if (tama->NowIndex < tamaDivMax - 1)
+		{
+			tama->NowIndex++;
+		}
+		else
+		{
+			tama->NowIndex = 0;
+		}
+		tama->AnimationCnt = 0;
+	}
 }
 
 /// <summary>
@@ -755,6 +824,20 @@ VOID CollUpdate(CHARA* chara)
 	chara->coll.top = chara->img.y;
 	chara->coll.right = chara->img.x + chara->img.width;
 	chara->coll.bottom = chara->img.y + chara->img.height;
+
+	return;
+}
+
+/// <summary>
+/// 当たり判定の領域更新
+/// </summary>
+/// <param name="chara">当たり判定の領域</param>
+VOID CollUpdateTama(TAMA* tama)
+{
+	tama->coll.left = tama->x;
+	tama->coll.top = tama->y;
+	tama->coll.right = tama->x + tama->width;
+	tama->coll.bottom = tama->y + tama->height;
 
 	return;
 }
