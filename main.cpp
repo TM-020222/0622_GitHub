@@ -10,8 +10,8 @@
 
 //ƒ}ƒNƒ’è‹`
 #define TAMA_MAX 30		//’e‚Ì‘”
-#define TEKI_MAX 10		//“G‚Ì‘”
-#define TEKI_KIND 8		//“G‚Ìí—Ş
+#define TEKI_MAX 30		//“G‚Ì‘”
+#define TEKI_KIND 7		//“G‚Ìí—Ş
 
 
 //“®‰æ‚Ì\‘¢‘Ì
@@ -122,6 +122,8 @@ CHARA teki_moto[TEKI_KIND];
 //“Gƒf[ƒ^
 CHARA teki[TEKI_MAX];
 
+CHARA teki_big;
+
 //“Gƒf[ƒ^‚ÌƒpƒX
 char tekipath[TEKI_KIND][255] =
 {
@@ -131,9 +133,11 @@ char tekipath[TEKI_KIND][255] =
 	{".\\image\\teki_mizu.png"},
 	{".\\image\\teki_purple.png"},
 	{".\\image\\teki_red.png"},
-	{".\\image\\teki_red_big.png"},
 	{".\\image\\teki_yellow.png"}
 };
+
+char teki_bigpath[255] =
+{ ".\\image\\teki_red_big.png" };
 
 //ƒV[ƒ“Ø‚è‘Ö‚¦
 int fadeTimeMill = 2000;						//Ø‚è‘Ö‚¦ƒ~ƒŠ•b
@@ -158,10 +162,13 @@ int tamaShotCntMax = 8;
 
 //“G‚ªo‚Ä‚­‚éƒJƒEƒ“ƒg
 int tekiAddCnt = 0;
-int tekiAddCntMax = 90;
+int tekiAddCntMax = 30;
 
 //ƒXƒRƒA
 int score = 0;
+
+int BigCnt = 0;
+int BigCntMax = 50;
 
 //ƒvƒƒgƒ^ƒCƒvéŒ¾
 VOID Title(VOID);		//ƒ^ƒCƒgƒ‹‰æ–Ê
@@ -400,6 +407,15 @@ BOOL GameLoad(VOID)
 		CollUpdate(&teki_moto[i]);
 		teki_moto[i].img.IsDraw = FALSE;	//•`‰æ‚³‚¹‚é
 	}
+
+	if (LoadImg(&teki_big.img, teki_bigpath) == FALSE)
+		return FALSE;
+
+	//“G‚ÌˆÊ’u
+	teki_big.img.x = GAME_WIDTH / 2 - teki_big.img.width / 2;
+	teki_big.img.y = -teki[TEKI_MAX - 1].img.height;
+	CollUpdate(&teki_big);
+	teki_big.img.IsDraw = FALSE;	//•`‰æ‚³‚¹‚é
 	return TRUE;
 }
 
@@ -856,6 +872,7 @@ VOID PlayProc(VOID)
 	}
 
 	CollUpdate(&player);
+	int bunkatu = 8;
 	if (tekiAddCnt <tekiAddCntMax)
 	{
 		tekiAddCnt++;
@@ -863,21 +880,50 @@ VOID PlayProc(VOID)
 	else
 	{
 		//“G‚ğ¶¬
-		for (int i = 0; i < TEKI_MAX; i++)
+		
+		if (GetRand(TEKI_MAX - 1) == TEKI_MAX - 1)
 		{
 			tekiAddCnt = 0;
-			//•`‰æ‚³‚ê‚Ä‚¢‚È‚¢“G‚ğ’T‚·
-			if (teki[i].img.IsDraw == FALSE)
+			if (teki[TEKI_MAX - 1].img.IsDraw == FALSE)
 			{
-				int bunkatu = 8;
+				teki[TEKI_MAX - 1] = teki_big;
+				teki[TEKI_MAX - 1].img.x = GetRand(bunkatu - 1) * GAME_WIDTH / bunkatu;
+				teki[TEKI_MAX - 1].img.y = -teki[TEKI_MAX - 1].img.height;
 
-				teki[i] = teki_moto[GetRand(TEKI_KIND - 1)];
+				teki[TEKI_MAX - 1].img.IsDraw = TRUE;
+			}
+		}
+		else
+		{
+			for (int i = 0; i < TEKI_MAX - 1; i++)
+			{
+				tekiAddCnt = 0;
+				//•`‰æ‚³‚ê‚Ä‚¢‚È‚¢“G‚ğ’T‚·
+				if (teki[i].img.IsDraw == FALSE)
+				{
+					teki[i] = teki_moto[GetRand(TEKI_KIND)];
 
-				teki[i].img.x = GetRand(bunkatu - 1) * GAME_WIDTH / bunkatu;
-				teki[i].img.y = -teki[i].img.height;
+					teki[i].img.x = GetRand(bunkatu - 1) * GAME_WIDTH / bunkatu;
+					teki[i].img.y = -teki[i].img.height;
 
-				teki[i].img.IsDraw = TRUE;
-				break;
+					teki[i].img.IsDraw = TRUE;
+					break;
+				}
+			}
+		}
+	}
+
+	//ã‚É‚¢‚é“G‚ª‰º‚Ì“G‚Æd‚È‚Á‚½‚çã‚Ì“G‚ÌêŠÄ’Š‘I
+	for (int i = 0; i < TEKI_MAX; i++)
+	{
+		for (int f = 1; f < 5; f++)
+		{
+			int j = i + f;
+			if (j == TEKI_MAX + f - 1)
+				j -= TEKI_MAX + f - 1;
+			if (CubeCollision(teki[i].coll, teki[j].coll) == TRUE)
+			{
+				teki[j].img.x = GetRand(bunkatu - 1) * GAME_WIDTH / bunkatu;
 			}
 		}
 	}
@@ -896,6 +942,10 @@ VOID PlayProc(VOID)
 			{
 				teki[i].img.IsDraw = FALSE;
 			}
+			if (teki[TEKI_MAX + 1].img.y > GAME_HEIGHT)
+			{
+				teki[TEKI_MAX + 1].img.IsDraw = FALSE;
+			}
 		}
 		//“G‚Æ’e‚ª“–‚½‚Á‚½
 		for (int cnt = 0; cnt < TAMA_MAX; cnt++)
@@ -907,10 +957,31 @@ VOID PlayProc(VOID)
 				{
 					if (CubeCollision(teki[i].coll, tama[cnt].coll) == TRUE)
 					{
-						tama[cnt].IsDraw = FALSE;
-						teki[i].img.IsDraw = FALSE;
+						if (CubeCollision(teki[TEKI_MAX - 1].coll, tama[cnt].coll) == TRUE)
+						{
+							if (BigCnt < BigCntMax)
+							{
+								tama[cnt].IsDraw = FALSE;
+								BigCnt++;
+							}
+							else
+							{
+								tama[cnt].IsDraw = FALSE;
+								teki[i].img.IsDraw = FALSE;
 
-						score += 1000 * (i + 1);
+								CollUpdate(&teki[TEKI_MAX - 1]);
+
+								BigCnt = 0;
+								score += 10000;
+							}
+						}
+						else
+						{
+							tama[cnt].IsDraw = FALSE;
+							teki[i].img.IsDraw = FALSE;
+
+							score += (1000 * (i + 1));
+						}
 					}
 				}
 			}

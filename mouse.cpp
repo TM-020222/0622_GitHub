@@ -92,7 +92,7 @@ BOOL MouseUp(int MOUSE_INPUT_)
 }
 
 /// <summary>
-/// ボタンを押し上げたか、マウスコード判断する
+/// ボタンを押し上げたか、マウスコードで判断する
 /// </summary>
 /// <param name="MOUSE_INPUT_">MOUSE_INPUT_</param>
 /// <param name="milliTime">ボタンを押し続けている時間(ミリ秒)</param>
@@ -136,7 +136,6 @@ BOOL MouseClick(int MOUSE_INPUT_)
 /// <summary>
 /// マウスの情報を描画する
 /// </summary>
-/// <returns></returns>
 VOID MouseDraw(VOID)
 {
 	if (GAME_DEBUG == TRUE)	//デバッグモードなら
@@ -149,17 +148,16 @@ VOID MouseDraw(VOID)
 }
 
 /// <summary>
-/// マウスが矩形領域をクリックしたか？
+/// マウスが矩形領域をクリックしたか
 /// </summary>
 /// <param name="rect">矩形領域</param>
 /// <param name="MOUSE_INPUT_">マウスコード</param>
-/// <returns></returns>
 BOOL MouseRectClick(RECT rect, int MOUSE_INPUT_)
 {
 	//点と四角の当たり判定
 	if (CheckColliPointToRect(mouse.point, rect) == TRUE)
 	{
-		//マウスをクリックしているか？
+		//マウスをクリックしているか
 		return MouseClick(MOUSE_INPUT_);
 	}
 
@@ -167,17 +165,16 @@ BOOL MouseRectClick(RECT rect, int MOUSE_INPUT_)
 }
 
 /// <summary>
-/// マウスが円をクリックしたか？
+/// マウスが円をクリックしたか
 /// </summary>
 /// <param name="circle">円領域</param>
 /// <param name="MOUSE_INPUT_">マウスコード</param>
-/// <returns></returns>
 BOOL MouseMaruClick(MARU circle, int MOUSE_INPUT_)
 {
 	//点と円の当たり判定
 	if (CheckColliPointToMaru(mouse.point, circle) == TRUE)
 	{
-		//マウスをクリックしているか？
+		//マウスをクリックしているか
 		return MouseClick(MOUSE_INPUT_);
 	}
 

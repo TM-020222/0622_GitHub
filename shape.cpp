@@ -3,7 +3,7 @@
 //ヘッダーファイル読み込み
 #include "game.h"
 #include "shape.h"
-#include "math.h"
+#include <math.h>
 
 //グローバル変数
 
@@ -59,7 +59,7 @@ BOOL CheckColliPointToMaru(iPOINT pt, MARU m)
 	float b = pt.y - m.center.y;	//三角形の高さの長さを求める
 	float c = sqrtf(a * a + b * b);	//三角形の斜辺の長さを求める(sq rt = square root = 平方根)
 
-	//斜辺の長さが、円の半径よりも短いならば、円の中にいる！
+	//斜辺の長さが、円の半径よりも短いならば、円の中にいる
 	if (c <= m.radius)
 	{
 		return TRUE;
@@ -82,7 +82,7 @@ BOOL CheckCollMaruToMaru(MARU maru1, MARU maru2)
 	float b = maru1.center.y - maru2.center.y;	//三角形の高さの長さを求める
 	float c = sqrtf(a * a + b * b);				//三角形の斜辺の長さを求める(sq rt = square root = 平方根)
 
-	//斜辺の長さが、円の半径①＋円の半径②よりも短いならば、円の中にいる！
+	//斜辺の長さが、円の半径①＋円の半径②よりも短いならば、円の中にいる
 	if (c <= maru1.radius + maru2.radius)
 	{
 		return TRUE;
@@ -101,7 +101,7 @@ BOOL CheckCollMaruToMaru(MARU maru1, MARU maru2)
 /// <returns>RECT型</returns>
 RECT GetRect(int left, int top, int right, int bottom)
 {
-	//一時的にRECT型の変数を作って
+	//一時的にRECT型の変数を作り
 	RECT rect = { left ,top ,right ,bottom };
 
 	//RECT型を返す
