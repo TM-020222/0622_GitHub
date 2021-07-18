@@ -170,6 +170,12 @@ int score = 0;
 int BigCnt = 0;
 int BigCntMax = 50;
 
+//爆発の関数
+int expi;
+
+int expCT;
+int expCTMax;
+
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
 VOID TitleProc(VOID);	//タイトル画面(処理)
@@ -372,6 +378,17 @@ BOOL GameLoad(VOID)
 		tama_moto.divX, tama_moto.divY , 4) == FALSE)
 		return FALSE;
 
+	//分割数を設定
+	explosion.divX = 8;
+	explosion.divY = 2;
+	explosion.divMax = 16;
+
+	//画像を分割して読み込み
+	if (LoadImageDiv(&explosion,
+		".\\image\\baku1.png",
+		explosion.divX, explosion.divY , explosion.divMax) == FALSE)
+		return FALSE;
+
 	if (LoadImg(&player.img,".\\image\\player.png") == FALSE)
 		return FALSE;
 	//プレイヤーの位置
@@ -560,6 +577,21 @@ VOID GameInit(VOID)
 
 	//当たり判定の更新
 	CollUpdate(&player);
+
+	///爆発の初期化
+	explosion.x = player.img.x + explosion.width / 2;
+	explosion.y = player.img.y + explosion.height / 2;
+
+	explosion.IsDraw = FALSE;
+
+	explosion.AnimationCntMax = 60;
+
+	//爆発しているか
+	expi = 0;
+
+	//爆発後の復活時間
+	expCT = 0;
+	expCTMax = 10;
 
 	//位置を設定
 	tama_moto.x = 0;
@@ -942,9 +974,9 @@ VOID PlayProc(VOID)
 			{
 				teki[i].img.IsDraw = FALSE;
 			}
-			if (teki[TEKI_MAX + 1].img.y > GAME_HEIGHT)
+			if (teki[TEKI_MAX - 1].img.y > GAME_HEIGHT)
 			{
-				teki[TEKI_MAX + 1].img.IsDraw = FALSE;
+				teki[TEKI_MAX - 1].img.IsDraw = FALSE;
 			}
 		}
 		//敵と弾が当たった時
@@ -987,7 +1019,59 @@ VOID PlayProc(VOID)
 			}
 		}
 	}
-	
+	for (int i = 0; i < TEKI_MAX + 1; i++)
+	{
+		if (CubeCollision(player.coll, teki[i].coll) == TRUE)
+		{
+			explosion.IsDraw = TRUE;
+			explosion.x = player.img.x;
+			explosion.y = player.img.y;
+
+			for (int i = 0; i < explosion.divMax; i++)
+			{
+				if (explosion.AnimationCnt < explosion.AnimationCntMax && player.img.IsDraw==TRUE)
+				{
+					explosion.AnimationCnt++;
+				}
+				else
+				{
+					explosion.AnimationCnt = 0;
+					
+					if (explosion.NowIndex < explosion.divMax - 1)
+					{
+						explosion.NowIndex++;
+					}
+					else
+					{
+						explosion.NowIndex = 0;
+						player.img.IsDraw = FALSE;
+					}
+				}
+			}
+		}
+	}
+	if (player.img.IsDraw == FALSE)
+	{
+		for (int i=0;i<expCTMax;i++)
+		{
+			if (expCT < expCTMax)
+			{
+				expCT++;
+			}
+			else
+			{
+				expCT = 0;
+				if(player.img.IsDraw == FALSE)
+				{
+					player.img.IsDraw = TRUE;
+				}
+				else if(player.img.IsDraw == TRUE)
+				{
+					player.img.IsDraw = FALSE;
+				}
+			}
+		}
+	}
 	return;
 }
 
@@ -1054,6 +1138,12 @@ VOID PlayDraw(VOID)
 					GetColor(255, 0, 0), FALSE);
 			}
 		}
+	}
+
+	if (explosion.IsDraw == TRUE)
+	{
+		DrawGraph(explosion.x, explosion.y,
+			explosion.handle[explosion.NowIndex], TRUE);
 	}
 
 	//スコアを描画
