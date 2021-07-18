@@ -172,6 +172,7 @@ int BigCntMax = 50;
 
 //爆発の関数
 int expi;
+int exps;
 
 int expCT;
 int expCTMax;
@@ -584,10 +585,11 @@ VOID GameInit(VOID)
 
 	explosion.IsDraw = FALSE;
 
-	explosion.AnimationCntMax = 60;
+	explosion.AnimationCntMax = 10;
 
-	//爆発しているか
+	//爆発に関して(後で改変)
 	expi = 0;
+	exps = 0;
 
 	//爆発後の復活時間
 	expCT = 0;
@@ -601,7 +603,7 @@ VOID GameInit(VOID)
 	tama_moto.speed = 10;
 
 	//アニメーションを変える速度
-	tama_moto.AnimationCntMax = 10;
+	tama_moto.AnimationCntMax = 6;
 
 	//当たり判定の更新
 	CollUpdateTama(&tama_moto);
@@ -1021,55 +1023,63 @@ VOID PlayProc(VOID)
 	}
 	for (int i = 0; i < TEKI_MAX + 1; i++)
 	{
-		if (CubeCollision(player.coll, teki[i].coll) == TRUE)
+		if (CubeCollision(player.coll, teki[i].coll) == TRUE && teki[i].img.IsDraw == TRUE && expi == 0)
 		{
-			explosion.IsDraw = TRUE;
+			expi = 1;
 			explosion.x = player.img.x;
 			explosion.y = player.img.y;
-
-			for (int i = 0; i < explosion.divMax; i++)
-			{
-				if (explosion.AnimationCnt < explosion.AnimationCntMax && player.img.IsDraw==TRUE)
-				{
-					explosion.AnimationCnt++;
-				}
-				else
-				{
-					explosion.AnimationCnt = 0;
-					
-					if (explosion.NowIndex < explosion.divMax - 1)
-					{
-						explosion.NowIndex++;
-					}
-					else
-					{
-						explosion.NowIndex = 0;
-						player.img.IsDraw = FALSE;
-					}
-				}
-			}
+			teki[i].img.IsDraw = FALSE;
 		}
 	}
-	if (player.img.IsDraw == FALSE)
+	if (expi == 1)
 	{
-		for (int i=0;i<expCTMax;i++)
+		player.img.IsDraw = FALSE;
+		explosion.IsDraw = TRUE;
+
+		if (explosion.AnimationCnt < explosion.AnimationCntMax)
 		{
-			if (expCT < expCTMax)
+			explosion.AnimationCnt++;
+		}
+		else
+		{
+			explosion.AnimationCnt = 0;
+
+			if (explosion.NowIndex < explosion.divMax)
 			{
-				expCT++;
+				explosion.NowIndex++;
 			}
 			else
 			{
-				expCT = 0;
-				if(player.img.IsDraw == FALSE)
-				{
-					player.img.IsDraw = TRUE;
-				}
-				else if(player.img.IsDraw == TRUE)
-				{
-					player.img.IsDraw = FALSE;
-				}
+				explosion.NowIndex = 0;
+				expi = 2;
+				explosion.IsDraw = FALSE;
 			}
+		}
+	}
+	if (expi==2)
+	{
+		if (expCT < expCTMax)
+		{
+			expCT++;
+		}
+		else
+		{
+			exps++;
+			expCT = 0;
+			if (player.img.IsDraw == FALSE)
+			{
+				player.img.IsDraw = TRUE;
+			}
+			else if (player.img.IsDraw == TRUE)
+			{
+				player.img.IsDraw = FALSE;
+			}
+		}
+		if (exps >= expCTMax)
+		{
+			expi = 0;
+			exps = 0;
+			player.img.IsDraw = TRUE;
 		}
 	}
 	return;
