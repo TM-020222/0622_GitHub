@@ -116,6 +116,10 @@ CHARA player;
 //背景
 IMAGE back[2];
 
+//タイトルのスタート
+//当たり判定の都合上キャラ
+CHARA start[2];
+
 //敵データ(元)
 CHARA teki_moto[TEKI_KIND];
 
@@ -176,6 +180,10 @@ int exps;
 
 int expCT;
 int expCTMax;
+
+//スタートのカウント
+int startCnt = 0;
+const int startCntMax = 60;
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
@@ -398,7 +406,7 @@ BOOL GameLoad(VOID)
 	player.img.IsDraw = TRUE;	//描画させる
 
 	//背景の画像を読み込み
-	if (LoadImg(&back[0],".\\image\\hosi.png") == FALSE)
+	if (LoadImg(&back[0], ".\\image\\hosi.png") == FALSE)
 		return FALSE;
 	//背景の位置
 	back[0].x = 0;
@@ -406,12 +414,31 @@ BOOL GameLoad(VOID)
 	back[0].IsDraw = TRUE;	//描画させる
 
 	//背景の画像を読み込み
-	if (LoadImg(&back[1],".\\image\\hosi_rev.png") == FALSE)
+	if (LoadImg(&back[1], ".\\image\\hosi_rev.png") == FALSE)
 		return FALSE;
 	//背景の位置
 	back[1].x = 0;
 	back[1].y = 0;
 	back[1].IsDraw = TRUE;	//描画させる
+
+
+	//スタートの画像を読み込み
+	if (LoadImg(&start[0].img, ".\\image\\Start.png") == FALSE)
+		return FALSE;
+	//スタートの位置
+	start[0].img.x = 0;
+	start[0].img.y = 0;
+	start[0].img.IsDraw = TRUE;	//描画させる
+
+	//スタートの画像を読み込み
+	if (LoadImg(&start[1].img, ".\\image\\Start2.png") == FALSE)
+		return FALSE;
+	//スタートの位置
+	start[1].img.x = 0;
+	start[1].img.y = 0;
+	start[1].img.IsDraw = FALSE;	//描画させない
+
+
 
 
 	for (int i = 0; i < TEKI_KIND; i++)
@@ -617,12 +644,12 @@ VOID GameInit(VOID)
 		tama[i] = tama_moto;
 	}
 
-	//プレイヤーの位置
+	//背景の位置
 	back[0].x = 0;
 	back[0].y = -back[0].height;
 	back[0].IsDraw = TRUE;	//描画させる
 
-	//プレイヤーの位置
+	//背景の位置
 	back[1].x = 0;
 	back[1].y = 0;
 	back[1].IsDraw = TRUE;	//描画させる
@@ -636,16 +663,33 @@ VOID GameInit(VOID)
 		teki_moto[i].img.IsDraw = FALSE;
 	}
 
+	for (int i = 0; i < TEKI_MAX; i++)
+	{
+		teki[i].img.x = 0;
+		teki[i].img.y = 0;
+		teki[i].img.IsDraw = FALSE;
+	}
+
 	return;
 }
 
 /// <summary>
-/// タイトルの画像を初期化
+/// タイトルを初期化
 /// </summary>
 /// <param name=""></param>
 VOID TitleInit(VOID)
 {
+	//スタートのカウントの初期化
+	startCnt = 0;
 
+	//スタートの位置
+	start[0].img.x = GAME_WIDTH / 2 - start[0].img.width / 2;
+	start[0].img.y = GAME_HEIGHT / 2 + start[0].img.height / 4;
+	start[0].img.IsDraw = TRUE;	//描画させる
+
+	start[1].img.x = GAME_WIDTH / 2 - start[1].img.width / 2;
+	start[1].img.y = GAME_HEIGHT / 2 + start[1].img.height / 4;
+	start[1].img.IsDraw = FALSE;	//描画させない
 }
 
 /// <summary>
@@ -677,7 +721,53 @@ VOID Title(VOID)
 /// </summary>
 VOID TitleProc(VOID)
 {
-	
+	//当たり判定の更新
+	for (int i = 0; i < 2; i++)
+	{
+		CollUpdate(&start[i]);
+	}
+
+	//マウスの左を押しているなら
+	if (MouseClick(MOUSE_INPUT_LEFT) == TRUE)
+	{
+		//スタートの矩形を押しているなら
+		if (MouseRectClick(start[0].coll, MOUSE_INPUT_LEFT) == TRUE)
+		{
+			//画像を変える
+			start[0].img.IsDraw = FALSE;
+			start[1].img.IsDraw = TRUE;
+
+			//シーンを切り替え
+			//次のシーンの初期化をここで行うと楽
+
+			//ゲームの初期化
+			GameInit();
+
+			//プレイ画面に切り替え
+			ChangeScene(GAME_SCENE_PLAY);
+
+			//マウスを描画しない
+			SetMouseDispFlag(FALSE);
+
+			return;
+		}
+	}
+	//押していないなら(現在未使用)
+	/*else
+	{
+		if (startCnt == startCntMax)
+		{
+			//画像を戻す
+			start[0].img.IsDraw = TRUE;
+			start[1].img.IsDraw = FALSE;
+
+			startCnt = 0;
+		}
+		else
+		{
+			startCnt++;
+		}
+	}*/
 
 	//プレイシーンへ切り替える
 	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
@@ -705,7 +795,20 @@ VOID TitleProc(VOID)
 /// </summary>
 VOID TitleDraw(VOID)
 {
-	
+	for (int i = 0; i < 2; i++)
+	{
+		if (start[i].img.IsDraw == TRUE)
+		{
+			DrawGraph(start[i].img.x, start[i].img.y, start[i].img.handle, TRUE);
+
+			//当たり判定
+			if (GAME_DEBUG == TRUE)
+			{
+				DrawBox(start[i].coll.left, start[i].coll.top, start[i].coll.right, start[i].coll.bottom,
+					GetColor(255, 0, 0), FALSE);
+			}
+		}
+	}
 
 	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));
 	
@@ -947,21 +1050,6 @@ VOID PlayProc(VOID)
 		}
 	}
 
-	//上にいる敵が下の敵と重なったら上の敵の場所再抽選
-	for (int i = 0; i < TEKI_MAX; i++)
-	{
-		for (int f = 1; f < 5; f++)
-		{
-			int j = i + f;
-			if (j == TEKI_MAX + f - 1)
-				j -= TEKI_MAX + f - 1;
-			if (CubeCollision(teki[i].coll, teki[j].coll) == TRUE)
-			{
-				teki[j].img.x = GetRand(bunkatu - 1) * GAME_WIDTH / bunkatu;
-			}
-		}
-	}
-
 	//敵の処理
 	for (int i = 0; i < TEKI_MAX; i++)
 	{
@@ -981,6 +1069,24 @@ VOID PlayProc(VOID)
 				teki[TEKI_MAX - 1].img.IsDraw = FALSE;
 			}
 		}
+
+		//上にいる敵が下の敵と重なったら上の敵の場所再抽選
+		for (int i = 0; i < TEKI_MAX; i++)
+		{
+			for (int f = 1; f < 5; f++)
+			{
+				int j = i + f;
+				if (j == TEKI_MAX + f - 1)
+					j -= TEKI_MAX + f - 1;
+				if (CubeCollision(teki[i].coll, teki[j].coll) == TRUE)
+				{
+					teki[j].img.x =
+						GetRand(bunkatu - 1) * GAME_WIDTH / bunkatu;
+					CollUpdate(&teki[i]);
+				}
+			}
+		}
+
 		//敵と弾が当たった時
 		for (int cnt = 0; cnt < TAMA_MAX; cnt++)
 		{
@@ -1211,6 +1317,8 @@ VOID EndProc(VOID)
 /// </summary>
 VOID EndDraw(VOID)
 {
+	DrawFormatString(0, GAME_HEIGHT - 40, GetColor(0, 255, 0), "SCORE:%08d", score);
+
 	DrawString(0, 0, "エンド画面", GetColor(0, 0, 0));
 	
 	return;
