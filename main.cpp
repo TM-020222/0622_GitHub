@@ -116,6 +116,9 @@ CHARA player;
 //背景
 IMAGE back[2];
 
+//タイトルの画像
+IMAGE titleimg;
+
 //タイトルのスタート
 //当たり判定の都合上キャラ
 CHARA start[2];
@@ -127,6 +130,15 @@ CHARA teki_moto[TEKI_KIND];
 CHARA teki[TEKI_MAX];
 
 CHARA teki_big;
+
+//エンド画面の画像
+IMAGE gameclear;
+IMAGE hatena;
+
+//音楽
+AUDIO titleBGM;
+AUDIO playBGM;
+AUDIO endBGM;
 
 //敵データのパス
 char tekipath[TEKI_KIND][255] =
@@ -185,6 +197,10 @@ int expCTMax;
 int startCnt = 0;
 const int startCntMax = 60;
 
+//エンド画面のはてなのカウント
+int hatenaCnt = 0;
+const int hatenaCntMax = 600;
+
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
 VOID TitleProc(VOID);	//タイトル画面(処理)
@@ -222,6 +238,8 @@ BOOL LoadImageDiv(TAMA* handle, const char* path, int divX, int divY, int DivMax
 
 VOID GameInit(VOID);	//ゲームの初期化
 VOID TitleInit(VOID);	//タイトルの初期化
+
+VOID EndInit(VOID);	//エンドの初期化
 
 VOID CollUpdate(CHARA* chara);	//当たり判定の領域を更新
 VOID CollUpdateTama(TAMA* tama);	//当たり判定の領域を更新
@@ -366,6 +384,17 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	for (int i = 0; i < TEKI_KIND; i++){
 		DeleteGraph(teki_moto[i].img.handle);}
 
+	for (int i = 0; i < 2; i++)
+		DeleteGraph(start[i].img.handle);
+	DeleteGraph(titleimg.handle);
+	DeleteGraph(gameclear.handle);
+	DeleteGraph(hatena.handle);
+
+	//読み込んだ音楽を開放
+	DeleteSoundMem(titleBGM.handle);
+	DeleteSoundMem(playBGM.handle);
+	DeleteSoundMem(endBGM.handle);
+
 	DxLib_End();				// ＤＸライブラリ使用の終了処理
 
 	return 0;				// ソフトの終了 
@@ -421,6 +450,15 @@ BOOL GameLoad(VOID)
 	back[1].y = 0;
 	back[1].IsDraw = TRUE;	//描画させる
 
+	//タイトルの読み込み
+
+	//タイトルの画像を読み込み
+	if (LoadImg(&titleimg, ".\\image\\shooting_trying.png") == FALSE)
+		return FALSE;
+	//タイトルの位置
+	titleimg.x = 0;
+	titleimg.y = 0;
+	titleimg.IsDraw = TRUE;	//描画させる
 
 	//スタートの画像を読み込み
 	if (LoadImg(&start[0].img, ".\\image\\Start.png") == FALSE)
@@ -437,7 +475,6 @@ BOOL GameLoad(VOID)
 	start[1].img.x = 0;
 	start[1].img.y = 0;
 	start[1].img.IsDraw = FALSE;	//描画させない
-
 
 
 
@@ -461,6 +498,32 @@ BOOL GameLoad(VOID)
 	teki_big.img.y = -teki[TEKI_MAX - 1].img.height;
 	CollUpdate(&teki_big);
 	teki_big.img.IsDraw = FALSE;	//描画させる
+
+	//エンド画面の画像の読み込み
+	if (LoadImg(&gameclear, ".\\image\\gameclear.png") == FALSE)
+		return FALSE;
+	gameclear.x = 0;
+	gameclear.y = 0;
+	gameclear.IsDraw = TRUE;
+
+	if (LoadImg(&hatena, ".\\image\\hatena.png") == FALSE)
+		return FALSE;
+	hatena.x = 0;
+	hatena.y = 0;
+	hatena.IsDraw = FALSE;
+
+
+
+	//音楽を読み込み
+	if (LoadAudio(&titleBGM, ".\\audio\\秋空は遥か遠く.mp3", 255, DX_PLAYTYPE_LOOP) == FALSE)
+		return FALSE;
+	if (LoadAudio(&playBGM, ".\\audio\\消えゆく者への祈り_2.mp3", 255, DX_PLAYTYPE_LOOP) == FALSE)
+		return FALSE;
+	if (LoadAudio(&endBGM, ".\\audio\\Sky_After_Fireworks.mp3", 255, DX_PLAYTYPE_LOOP) == FALSE)
+		return FALSE;
+
+
+
 	return TRUE;
 }
 
@@ -670,26 +733,49 @@ VOID GameInit(VOID)
 		teki[i].img.IsDraw = FALSE;
 	}
 
+
+	//音楽を初期化
+
+
 	return;
 }
 
 /// <summary>
 /// タイトルを初期化
 /// </summary>
-/// <param name=""></param>
 VOID TitleInit(VOID)
 {
+	//タイトルの画像の位置
+	titleimg.x = GAME_WIDTH / 2 - titleimg.width / 2;
+	titleimg.y = GAME_HEIGHT / 2 - titleimg.height + 30;
+	titleimg.IsDraw = TRUE;
+
 	//スタートのカウントの初期化
 	startCnt = 0;
 
 	//スタートの位置
 	start[0].img.x = GAME_WIDTH / 2 - start[0].img.width / 2;
-	start[0].img.y = GAME_HEIGHT / 2 + start[0].img.height / 4;
+	start[0].img.y = GAME_HEIGHT / 2 + start[0].img.height;
 	start[0].img.IsDraw = TRUE;	//描画させる
 
 	start[1].img.x = GAME_WIDTH / 2 - start[1].img.width / 2;
-	start[1].img.y = GAME_HEIGHT / 2 + start[1].img.height / 4;
+	start[1].img.y = GAME_HEIGHT / 2 + start[1].img.height;
 	start[1].img.IsDraw = FALSE;	//描画させない
+}
+
+
+VOID EndInit(VOID)
+{
+	//エンドの画像の位置
+	gameclear.x = GAME_WIDTH / 2 - gameclear.width / 2 - hatena.width / 2;	//中央
+	gameclear.y = GAME_HEIGHT / 2 - gameclear.height / 2;					//中央
+	gameclear.IsDraw = TRUE;
+
+	hatena.x = gameclear.x + gameclear.width;		//GameClearの後
+	hatena.y = gameclear.y;							//GameClearの後
+	hatena.IsDraw = FALSE;
+
+	hatenaCnt = 0;
 }
 
 /// <summary>
@@ -740,6 +826,9 @@ VOID TitleProc(VOID)
 			//シーンを切り替え
 			//次のシーンの初期化をここで行うと楽
 
+			//音楽を止める
+			StopSoundMem(titleBGM.handle);
+
 			//ゲームの初期化
 			GameInit();
 
@@ -775,6 +864,9 @@ VOID TitleProc(VOID)
 		//シーンを切り替え
 		//次のシーンの初期化をここで行うと楽
 
+		//音楽を止める
+		StopSoundMem(titleBGM.handle);
+
 		//ゲームの初期化
 		GameInit();
 
@@ -787,6 +879,13 @@ VOID TitleProc(VOID)
 		return;
 	}
 
+	//BGMが流れていないとき
+	if (CheckSoundMem(titleBGM.handle) == 0)
+	{
+		//BGMを流す
+		PlaySoundMem(titleBGM.handle, titleBGM.playtype);
+	}
+
 	return;
 }
 
@@ -795,6 +894,13 @@ VOID TitleProc(VOID)
 /// </summary>
 VOID TitleDraw(VOID)
 {
+	//タイトルの描画
+	if (titleimg.IsDraw == TRUE)
+	{
+		DrawGraph(titleimg.x, titleimg.y, titleimg.handle, TRUE);
+	}
+
+	//スタートボタンの描画
 	for (int i = 0; i < 2; i++)
 	{
 		if (start[i].img.IsDraw == TRUE)
@@ -892,9 +998,12 @@ VOID PlayProc(VOID)
 	//エンドシーンへ切り替える
 	if (KeyClick(KEY_INPUT_RETURN) == TRUE && GAME_DEBUG == TRUE)
 	{
+		//音楽を止める
+		StopSoundMem(playBGM.handle);
 
 		//シーンを切り替え
 		//次のシーンの初期化をここで行うと楽
+		EndInit();
 
 		//エンド画面に切り替え
 		ChangeScene(GAME_SCENE_END);
@@ -907,6 +1016,13 @@ VOID PlayProc(VOID)
 	else
 	{
 		score++;
+	}
+
+	//BGMが流れていないとき
+	if (CheckSoundMem(playBGM.handle) == 0)
+	{
+		//BGMを流す
+		PlaySoundMem(playBGM.handle, playBGM.playtype);
 	}
 
 	if (MouseClick(MOUSE_INPUT_LEFT) == TRUE)tamaShotCnt = 0;
@@ -970,23 +1086,6 @@ VOID PlayProc(VOID)
 			}
 		}
 	}
-
-	/*if (KeyDown(KEY_INPUT_UP) == TRUE)
-	{
-		player.img.y -= player.speed;
-	}
-	if (KeyDown(KEY_INPUT_DOWN) == TRUE)
-	{
-		player.img.y += player.speed;
-	}
-	if (KeyDown(KEY_INPUT_LEFT) == TRUE)
-	{
-		player.img.x -= player.speed;
-	}
-	if (KeyDown(KEY_INPUT_RIGHT) == TRUE)
-	{
-		player.img.x += player.speed;
-	}*/
 
 	player.img.x = mouse.point.x - player.img.width / 2;		//画像の位置をマウスの位置にする
 	player.img.y = mouse.point.y - player.img.height / 2;		//画像の位置をマウスの位置にする
@@ -1300,6 +1399,9 @@ VOID EndProc(VOID)
 		//シーンを切り替え
 		//次のシーンの初期化をここで行うと楽
 
+		//音楽の停止
+		StopSoundMem(endBGM.handle);
+
 		//タイトルの初期化
 		TitleInit();
 
@@ -1308,6 +1410,19 @@ VOID EndProc(VOID)
 
 		return;
 	}
+
+	//BGMが流れていないとき
+	if (CheckSoundMem(endBGM.handle) == 0)
+	{
+		//BGMを流す
+		PlaySoundMem(endBGM.handle, endBGM.playtype);
+	}
+
+	if (hatenaCnt < hatenaCntMax && hatena.IsDraw == FALSE)
+		hatenaCnt++;
+	else if (hatena.IsDraw == FALSE)
+		hatena.IsDraw = TRUE;
+
 	
 	return;
 }
@@ -1320,6 +1435,17 @@ VOID EndDraw(VOID)
 	DrawFormatString(0, GAME_HEIGHT - 40, GetColor(0, 255, 0), "SCORE:%08d", score);
 
 	DrawString(0, 0, "エンド画面", GetColor(0, 0, 0));
+
+	if (gameclear.IsDraw == TRUE)
+	{
+		DrawGraph(gameclear.x, gameclear.y,
+			gameclear.handle, TRUE);
+	}
+	if (hatena.IsDraw == TRUE)
+	{
+		DrawGraph(hatena.x, hatena.y,
+			hatena.handle, TRUE);
+	}
 	
 	return;
 }
